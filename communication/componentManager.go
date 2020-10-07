@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	commonStorage "github.com/kulycloud/common/storage"
 	protoCommon "github.com/kulycloud/protocol/common"
 	"google.golang.org/grpc"
 )
@@ -12,9 +13,11 @@ var ErrComponentNotFound = errors.New("component not found")
 
 var components = map[string]func(context.Context, *protoCommon.Endpoint) error {
 	"route-processor": connectRouteProcessor,
+	"storage": connectStorage,
 }
 
 var RouteProcessor *RouteProcessorCommunicator = nil
+var Storage *commonStorage.Communicator = nil
 
 func connectComponent(ctx context.Context, componentType string, endpoint *protoCommon.Endpoint) error {
 	fun, ok := components[componentType]
@@ -40,3 +43,21 @@ func connectRouteProcessor(ctx context.Context, endpoint *protoCommon.Endpoint) 
 	logger.Infow("connected route-processor", "endpoint", endpoint)
 	return nil
 }
+
+func connectStorage(ctx context.Context, endpoint *protoCommon.Endpoint) error {
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%v", endpoint.Host, endpoint.Port), grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("could not create route-processor connection: %w", err)
+	}
+
+	comm := commonStorage.NewCommunicator(conn)
+	err = comm.Check(ctx)
+	if err != nil {
+		return fmt.Errorf("could not ping storage: %w", err)
+	}
+
+	Storage = comm
+	logger.Infow("connected storage", "endpoint", endpoint)
+	return nil
+}
+
