@@ -27,7 +27,7 @@ func connectComponent(ctx context.Context, componentType string, endpoint *proto
 func connectRouteProcessor(ctx context.Context, endpoint *protoCommon.Endpoint) error {
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%v", endpoint.Host, endpoint.Port), grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("could create route-processor connection: %w", err)
+		return fmt.Errorf("could not create route-processor connection: %w", err)
 	}
 
 	routeProcessor := NewRouteProcessorCommunicator(conn)
