@@ -1,21 +1,16 @@
 package communication
 
 import (
-	"context"
-	protoCommon "github.com/kulycloud/protocol/common"
+	commonCommunication "github.com/kulycloud/common/communication"
 	protoRouteProcessor "github.com/kulycloud/protocol/route-processor"
-	"google.golang.org/grpc"
 )
 
+var _ commonCommunication.RemoteComponent = &RouteProcessorCommunicator{}
 type RouteProcessorCommunicator struct {
+	commonCommunication.ComponentCommunicator
 	client protoRouteProcessor.RouteProcessorClient
 }
 
-func NewRouteProcessorCommunicator(grpcClient grpc.ClientConnInterface) *RouteProcessorCommunicator {
-	return &RouteProcessorCommunicator{client: protoRouteProcessor.NewRouteProcessorClient(grpcClient)}
-}
-
-func (communicator *RouteProcessorCommunicator) Check(ctx context.Context) error {
-	_, err := communicator.client.Ping(ctx, &protoCommon.Empty{})
-	return err
+func NewRouteProcessorCommunicator(componentCommunicator *commonCommunication.ComponentCommunicator) *RouteProcessorCommunicator {
+	return &RouteProcessorCommunicator{ComponentCommunicator: *componentCommunicator, client: protoRouteProcessor.NewRouteProcessorClient(componentCommunicator.GrpcClient)}
 }

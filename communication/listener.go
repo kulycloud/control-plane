@@ -37,8 +37,8 @@ func (listener *Listener) Start() error {
 }
 
 func (listener *Listener) RegisterComponent(ctx context.Context, message *protoControlPlane.RegisterComponentRequest) (*protoControlPlane.RegisterComponentResult, error) {
-	logger.Infow("registering component", "component", message.Type)
-	err := connectComponent(ctx, message.Type, message.Endpoint)
+	logger.Infow("registering component", "type", message.Type)
+	err := GlobalComponentManager.ConnectComponent(ctx, message.Type, message.Endpoint)
 	if err != nil {
 		logger.Warnw("error connecting to component", "type", message.Type, "endpoint", message.Endpoint, "error", err)
 	}
