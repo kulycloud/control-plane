@@ -15,14 +15,15 @@ type RegisterHandler = func(context.Context, *ComponentManager, string, commonCo
 type ComponentFactory = func(context.Context, *ComponentManager, *commonCommunication.ComponentCommunicator, *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error)
 
 type ComponentManager struct {
-	GeneralRegisterHandlers	[]RegisterHandler
-	RegisterHandlers map[string][]RegisterHandler
-	Components []commonCommunication.RemoteComponent
-	factorySetters map[string]ComponentFactory
+	GeneralRegisterHandlers []RegisterHandler
+	RegisterHandlers        map[string][]RegisterHandler
+	Components              []commonCommunication.RemoteComponent
+	factorySetters          map[string]ComponentFactory
 
-	RouteProcessor *RouteProcessorCommunicator
-	Storage *commonCommunication.StorageCommunicator
+	RouteProcessor   *RouteProcessorCommunicator
+	Storage          *commonCommunication.StorageCommunicator
 	storageEndpoints []*protoCommon.Endpoint
+	Ingress          *IngressCommunicator
 }
 
 var GlobalComponentManager = ComponentManager{
@@ -35,9 +36,10 @@ var GlobalComponentManager = ComponentManager{
 		},
 	},
 	Components: make([]commonCommunication.RemoteComponent, 0),
-	factorySetters: map[string]ComponentFactory {
+	factorySetters: map[string]ComponentFactory{
 		"route-processor": routeProcessorFactory,
 		"storage":         storageFactory,
+		"ingress":         ingressFactory,
 	},
 	Storage: commonCommunication.NewEmptyStorageCommunicator(),
 }
@@ -95,14 +97,19 @@ func (componentManager *ComponentManager) createConnection(ctx context.Context, 
 }
 
 func routeProcessorFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
-	manager.RouteProcessor =  NewRouteProcessorCommunicator(communicator)
+	manager.RouteProcessor = NewRouteProcessorCommunicator(communicator)
 	return manager.RouteProcessor, nil
 }
 
 func storageFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
 	manager.Storage.UpdateComponentCommunicator(communicator)
-	manager.storageEndpoints = []*protoCommon.Endpoint {endpoint}
+	manager.storageEndpoints = []*protoCommon.Endpoint{endpoint}
 	return manager.Storage, nil
+}
+
+func ingressFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
+	manager.Ingress = NewIngressCommunicator(communicator)
+	return manager.Ingress, nil
 }
 
 func sendStorageOnRegister(ctx context.Context, manager *ComponentManager, componentType string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
