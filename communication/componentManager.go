@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	commonCommunication "github.com/kulycloud/common/communication"
-	commonStorage "github.com/kulycloud/common/storage"
 	protoCommon "github.com/kulycloud/protocol/common"
 	"google.golang.org/grpc"
 )
@@ -13,7 +12,7 @@ import (
 var ErrComponentNotFound = errors.New("component not found")
 
 type RegisterHandler = func(context.Context, *ComponentManager, string, commonCommunication.RemoteComponent, *protoCommon.Endpoint)
-type ComponentFactory = func(context.Context, *ComponentManager, *commonCommunication.ComponentCommunicator) (commonCommunication.RemoteComponent, error)
+type ComponentFactory = func(context.Context, *ComponentManager, *commonCommunication.ComponentCommunicator, *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error)
 
 type ComponentManager struct {
 	GeneralRegisterHandlers	[]RegisterHandler
@@ -22,7 +21,8 @@ type ComponentManager struct {
 	factorySetters map[string]ComponentFactory
 
 	RouteProcessor *RouteProcessorCommunicator
-	Storage *commonStorage.Communicator
+	Storage *commonCommunication.StorageCommunicator
+	storageEndpoints []*protoCommon.Endpoint
 }
 
 var GlobalComponentManager = ComponentManager{
@@ -39,6 +39,7 @@ var GlobalComponentManager = ComponentManager{
 		"route-processor": routeProcessorFactory,
 		"storage":         storageFactory,
 	},
+	Storage: commonCommunication.NewEmptyStorageCommunicator(),
 }
 
 func (componentManager *ComponentManager) ConnectComponent(ctx context.Context, componentType string, endpoint *protoCommon.Endpoint) error {
@@ -52,7 +53,7 @@ func (componentManager *ComponentManager) ConnectComponent(ctx context.Context, 
 		return err
 	}
 
-	remoteComp, err := factory(ctx, componentManager, comp)
+	remoteComp, err := factory(ctx, componentManager, comp, endpoint)
 	if err != nil {
 		return err
 	}
@@ -93,20 +94,36 @@ func (componentManager *ComponentManager) createConnection(ctx context.Context, 
 	return component, nil
 }
 
-func routeProcessorFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator) (commonCommunication.RemoteComponent, error) {
+func routeProcessorFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
 	manager.RouteProcessor =  NewRouteProcessorCommunicator(communicator)
 	return manager.RouteProcessor, nil
 }
 
-func storageFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator) (commonCommunication.RemoteComponent, error) {
-	manager.Storage = commonStorage.NewCommunicator(communicator)
+func storageFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
+	manager.Storage.UpdateComponentCommunicator(communicator)
+	manager.storageEndpoints = []*protoCommon.Endpoint {endpoint}
 	return manager.Storage, nil
 }
 
 func sendStorageOnRegister(ctx context.Context, manager *ComponentManager, componentType string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
-	logger.Info("common handler")
+	// Send storage to component that was just registered when storage already available (except it is a storage)
+	if componentType != "storage" && manager.Storage.Ready() {
+		err := component.RegisterStorageEndpoints(ctx, manager.storageEndpoints)
+		if err != nil {
+			logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint)
+		}
+	}
 }
 
 func sendStorageToComponentsOnRegister(ctx context.Context, manager *ComponentManager, componentType string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
+	// When storage connects propagate it to all cluster components
+	if manager.Storage.Ready() {
+		for _, component := range manager.Components {
+			err := component.RegisterStorageEndpoints(ctx, manager.storageEndpoints)
+			if err != nil {
+				logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint)
+			}
+		}
+	}
 	logger.Info("storage")
 }
