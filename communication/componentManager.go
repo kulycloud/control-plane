@@ -24,6 +24,7 @@ type ComponentManager struct {
 	Storage          *commonCommunication.StorageCommunicator
 	storageEndpoints []*protoCommon.Endpoint
 	Ingress          *IngressCommunicator
+	ServiceManager 	 *ServiceManagerCommunicator
 }
 
 var GlobalComponentManager = ComponentManager{
@@ -40,6 +41,7 @@ var GlobalComponentManager = ComponentManager{
 		"route-processor": routeProcessorFactory,
 		"storage":         storageFactory,
 		"ingress":         ingressFactory,
+		"service-manager": serviceManagerFactory,
 	},
 	Storage: commonCommunication.NewEmptyStorageCommunicator(),
 }
@@ -110,6 +112,11 @@ func storageFactory(ctx context.Context, manager *ComponentManager, communicator
 func ingressFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
 	manager.Ingress = NewIngressCommunicator(communicator)
 	return manager.Ingress, nil
+}
+
+func serviceManagerFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
+	manager.ServiceManager = NewServiceManagerCommunicator(communicator)
+	return manager.ServiceManager, nil
 }
 
 func sendStorageOnRegister(ctx context.Context, manager *ComponentManager, componentType string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
