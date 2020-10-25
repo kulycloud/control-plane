@@ -1,6 +1,8 @@
 package communication
 
 import (
+	"context"
+	"fmt"
 	commonCommunication "github.com/kulycloud/common/communication"
 	protoServices "github.com/kulycloud/protocol/services"
 )
@@ -16,3 +18,13 @@ func NewServiceManagerCommunicator(componentCommunicator *commonCommunication.Co
 	return &ServiceManagerCommunicator{ComponentCommunicator: *componentCommunicator, client: protoServices.NewServiceManagerClient(componentCommunicator.GrpcClient)}
 }
 
+func (communicator *ServiceManagerCommunicator) ReconcileNamespace(ctx context.Context, namespace string) error {
+	_, err := communicator.client.Reconcile(ctx, &protoServices.ReconcileRequest{
+		Namespace: namespace,
+	})
+
+	if err != nil {
+		return fmt.Errorf("error from service-manager: %w", err)
+	}
+	return nil
+}
