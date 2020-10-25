@@ -10,13 +10,12 @@ import (
 	"net"
 )
 
-
 var _ protoControlPlane.ControlPlaneServer = &Listener{}
 
 var logger = logging.GetForComponent("communication")
 
 type Listener struct {
-	server *grpc.Server
+	server   *grpc.Server
 	listener net.Listener
 }
 

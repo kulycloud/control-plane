@@ -6,6 +6,7 @@ import (
 )
 
 var _ commonCommunication.RemoteComponent = &RouteProcessorCommunicator{}
+
 type RouteProcessorCommunicator struct {
 	commonCommunication.ComponentCommunicator
 	client protoRouteProcessor.RouteProcessorClient
