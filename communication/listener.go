@@ -15,6 +15,7 @@ var _ protoControlPlane.ControlPlaneServer = &Listener{}
 var logger = logging.GetForComponent("communication")
 
 type Listener struct {
+	protoControlPlane.UnimplementedControlPlaneServer
 	server   *grpc.Server
 	listener net.Listener
 }

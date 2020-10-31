@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	commonCommunication "github.com/kulycloud/common/communication"
 	protoCommon "github.com/kulycloud/protocol/common"
 	"google.golang.org/grpc"
@@ -24,7 +25,7 @@ type ComponentManager struct {
 	Storage          *commonCommunication.StorageCommunicator
 	storageEndpoints []*protoCommon.Endpoint
 	Ingress          *IngressCommunicator
-	ServiceManager 	 *ServiceManagerCommunicator
+	ServiceManager   *ServiceManagerCommunicator
 }
 
 var GlobalComponentManager = ComponentManager{
