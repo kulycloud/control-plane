@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	commonCommunication "github.com/kulycloud/common/communication"
 	protoCommon "github.com/kulycloud/protocol/common"
 	"google.golang.org/grpc"
@@ -125,7 +124,7 @@ func sendStorageOnRegister(ctx context.Context, manager *ComponentManager, compo
 	if componentType != "storage" && manager.Storage.Ready() {
 		err := component.RegisterStorageEndpoints(ctx, manager.storageEndpoints)
 		if err != nil {
-			logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint)
+			logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint, "error", err)
 		}
 	}
 }
@@ -136,7 +135,7 @@ func sendStorageToComponentsOnRegister(ctx context.Context, manager *ComponentMa
 		for _, component := range manager.Components {
 			err := component.RegisterStorageEndpoints(ctx, manager.storageEndpoints)
 			if err != nil {
-				logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint)
+				logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint, "error", err)
 			}
 		}
 	}
