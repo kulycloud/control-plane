@@ -20,7 +20,7 @@ type ComponentManager struct {
 	Components              []commonCommunication.RemoteComponent
 	factorySetters          map[string]ComponentFactory
 
-	RouteProcessor   *RouteProcessorCommunicator
+	ApiServer        *ApiServerCommunicator
 	Storage          *commonCommunication.StorageCommunicator
 	storageEndpoints []*protoCommon.Endpoint
 	Ingress          *IngressCommunicator
@@ -35,10 +35,15 @@ var GlobalComponentManager = ComponentManager{
 		"storage": {
 			sendStorageToComponentsOnRegister,
 		},
+		"service-manager": {
+			func(ctx context.Context, manager *ComponentManager, typeName string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
+				manager.ServiceManager.ReconcileNamespace(ctx, "u01")
+			},
+		},
 	},
 	Components: make([]commonCommunication.RemoteComponent, 0),
 	factorySetters: map[string]ComponentFactory{
-		"route-processor": routeProcessorFactory,
+		"api-server":      apiServerFactory,
 		"storage":         storageFactory,
 		"ingress":         ingressFactory,
 		"service-manager": serviceManagerFactory,
@@ -98,9 +103,9 @@ func (componentManager *ComponentManager) createConnection(ctx context.Context, 
 	return component, nil
 }
 
-func routeProcessorFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
-	manager.RouteProcessor = NewRouteProcessorCommunicator(communicator)
-	return manager.RouteProcessor, nil
+func apiServerFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
+	manager.ApiServer = NewApiServerCommunicator(communicator)
+	return manager.ApiServer, nil
 }
 
 func storageFactory(ctx context.Context, manager *ComponentManager, communicator *commonCommunication.ComponentCommunicator, endpoint *protoCommon.Endpoint) (commonCommunication.RemoteComponent, error) {
