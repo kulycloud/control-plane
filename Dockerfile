@@ -1,17 +1,13 @@
 FROM golang:1.15.3-alpine AS builder
 
-ADD control-plane/go.mod control-plane/go.sum /build/control-plane/
-ADD protocol/go.mod protocol/go.sum /build/protocol/
-ADD common/go.mod common/go.sum /build/common/
+ADD go.mod go.sum /build/
 
 ENV CGO_ENABLED=0
 
-WORKDIR /build/control-plane
+WORKDIR /build
 RUN go mod download
 
-COPY control-plane/ /build/control-plane/
-COPY protocol/ /build/protocol
-COPY common/ /build/common
+COPY ./ /build/
 RUN go build -o /build/kuly .
 
 FROM scratch
