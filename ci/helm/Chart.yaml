@@ -1,0 +1,7 @@
+apiVersion: v2
+name: control-plane
+description: Kuly control plane
+
+type: application
+version: 0.1.0
+appVersion: "0.1.0-indev"
