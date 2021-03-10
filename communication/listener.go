@@ -6,6 +6,7 @@ import (
 	"github.com/kulycloud/common/logging"
 	"github.com/kulycloud/control-plane/config"
 	protoControlPlane "github.com/kulycloud/protocol/control-plane"
+    protoCommon "github.com/kulycloud/protocol/common"
 	"google.golang.org/grpc"
 	"net"
 )
@@ -18,10 +19,14 @@ type Listener struct {
 	protoControlPlane.UnimplementedControlPlaneServer
 	server   *grpc.Server
 	listener net.Listener
+
+    eventStreams map[string]*eventStream
 }
 
 func NewListener() *Listener {
-	return &Listener{}
+	return &Listener{
+        eventStreams: make(map[string]*eventStream, 0),
+    }
 }
 
 func (listener *Listener) Start() error {
@@ -36,12 +41,31 @@ func (listener *Listener) Start() error {
 	return listener.server.Serve(listener.listener)
 }
 
-func (listener *Listener) RegisterComponent(ctx context.Context, message *protoControlPlane.RegisterComponentRequest) (*protoControlPlane.RegisterComponentResult, error) {
+func (listener *Listener) RegisterComponent(message *protoControlPlane.RegisterComponentRequest, stream protoControlPlane.ControlPlane_RegisterComponentServer) error {
 	logger.Infow("registering component", "type", message.Type)
-	err := GlobalComponentManager.ConnectComponent(ctx, message.Type, message.Endpoint)
+	err := GlobalComponentManager.ConnectComponent(stream.Context(), message.Type, message.Endpoint)
 	if err != nil {
 		logger.Warnw("error connecting to component", "type", message.Type, "endpoint", message.Endpoint, "error", err)
 	}
+    eventStream := newEventStream(message.Endpoint, stream)
+    listener.eventStreams[eventStream.destination] = eventStream
 
-	return &protoControlPlane.RegisterComponentResult{}, err
+	return err
 }
+
+func (listener *Listener) CreateEvent(ctx context.Context, event *protoCommon.Event) (*protoCommon.Empty, error) {
+    for destination, stream := range listener.eventStreams {
+        err := stream.send(event)
+        if err != nil {
+            logger.Warn("error while sending event to stream %w", err)
+            delete(listener.eventStreams, destination)
+        }
+    }
+    return nil, nil
+}
+
+func (listener *Listener) ListenToEvent(ctx context.Context, request *protoControlPlane.ListenToEventRequest) (*protoCommon.Empty, error) {
+    
+    return nil, nil
+}
+
