@@ -37,6 +37,7 @@ var GlobalComponentManager = ComponentManager{
 		},
 		"service-manager": {
 			func(ctx context.Context, manager *ComponentManager, typeName string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
+				manager.ServiceManager.ReconcileNamespace(ctx, "core")
 				manager.ServiceManager.ReconcileNamespace(ctx, "u01")
 			},
 		},
