@@ -28,9 +28,7 @@ type ComponentManager struct {
 }
 
 var GlobalComponentManager = ComponentManager{
-	GeneralRegisterHandlers: []RegisterHandler{
-		sendStorageOnRegister,
-	},
+	GeneralRegisterHandlers: []RegisterHandler{},
 	RegisterHandlers: map[string][]RegisterHandler{
 		"storage": {
 			sendStorageToComponentsOnRegister,
@@ -125,25 +123,9 @@ func serviceManagerFactory(ctx context.Context, manager *ComponentManager, commu
 	return manager.ServiceManager, nil
 }
 
-func sendStorageOnRegister(ctx context.Context, manager *ComponentManager, componentType string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
-	// Send storage to component that was just registered when storage already available (except it is a storage)
-	if componentType != "storage" && manager.Storage.Ready() {
-		err := component.RegisterStorageEndpoints(ctx, manager.storageEndpoints)
-		if err != nil {
-			logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint, "error", err)
-		}
-	}
-}
-
 func sendStorageToComponentsOnRegister(ctx context.Context, manager *ComponentManager, componentType string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
 	// When storage connects propagate it to all cluster components
 	if manager.Storage.Ready() {
-		for _, component := range manager.Components {
-			err := component.RegisterStorageEndpoints(ctx, manager.storageEndpoints)
-			if err != nil {
-				logger.Warnw("Could not propagate storage to endpoint", "componentType", componentType, "endpoint", endpoint, "error", err)
-			}
-		}
+		GlobalListener.PublishEvent(commonCommunication.NewStorageChanged(manager.storageEndpoints).ToGrpcEvent())
 	}
-	logger.Info("storage")
 }
