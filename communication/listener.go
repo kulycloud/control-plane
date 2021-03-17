@@ -3,6 +3,7 @@ package communication
 import (
 	"context"
 	"fmt"
+	commonCommunication "github.com/kulycloud/common/communication"
 	"github.com/kulycloud/common/logging"
 	"github.com/kulycloud/control-plane/config"
 	protoCommon "github.com/kulycloud/protocol/common"
@@ -15,6 +16,8 @@ import (
 var _ protoControlPlane.ControlPlaneServer = &Listener{}
 
 var logger = logging.GetForComponent("communication")
+
+var GlobalListener *Listener
 
 type Listener struct {
 	protoControlPlane.UnimplementedControlPlaneServer
@@ -32,6 +35,7 @@ func NewListener() *Listener {
 }
 
 func (listener *Listener) Start() error {
+	GlobalListener = listener
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%v", config.GlobalConfig.RPCPort))
 	if err != nil {
 		return err
@@ -71,7 +75,12 @@ func (listener *Listener) RegisterComponent(message *protoControlPlane.RegisterC
 	return err
 }
 
-func (listener *Listener) CreateEvent(ctx context.Context, event *protoCommon.Event) (*protoCommon.Empty, error) {
+func (listener *Listener) CreateEvent(_ context.Context, event *protoCommon.Event) (*protoCommon.Empty, error) {
+	listener.PublishEvent(event)
+	return &protoCommon.Empty{}, nil
+}
+
+func (listener *Listener) PublishEvent(event *protoCommon.Event) {
 	logger.Debugf("creating event %v", event)
 	listener.streamMutex.Lock()
 	defer listener.streamMutex.Unlock()
@@ -83,10 +92,9 @@ func (listener *Listener) CreateEvent(ctx context.Context, event *protoCommon.Ev
 		}
 		logger.Debugf("sent event to %s", destination)
 	}
-	return &protoCommon.Empty{}, nil
 }
 
-func (listener *Listener) ListenToEvent(ctx context.Context, request *protoControlPlane.ListenToEventRequest) (*protoCommon.Empty, error) {
+func (listener *Listener) ListenToEvent(_ context.Context, request *protoControlPlane.ListenToEventRequest) (*protoCommon.Empty, error) {
 	logger.Debugf("%s requested to receive %s events", request.Destination, request.Type)
 	listener.streamMutex.Lock()
 	defer listener.streamMutex.Unlock()
@@ -95,5 +103,14 @@ func (listener *Listener) ListenToEvent(ctx context.Context, request *protoContr
 		return &protoCommon.Empty{}, fmt.Errorf("could not find associated stream")
 	}
 	stream.listenOnEvent(request.Type)
+
+	// Special Logic: Send Storage Endpoints on Storage Event Listening
+	if request.Type == string(commonCommunication.StorageChangedEvent) {
+		err := stream.send(commonCommunication.NewStorageChanged(GlobalComponentManager.storageEndpoints).ToGrpcEvent())
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &protoCommon.Empty{}, nil
 }
