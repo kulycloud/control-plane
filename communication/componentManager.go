@@ -33,12 +33,6 @@ var GlobalComponentManager = ComponentManager{
 		"storage": {
 			sendStorageToComponentsOnRegister,
 		},
-		"service-manager": {
-			func(ctx context.Context, manager *ComponentManager, typeName string, component commonCommunication.RemoteComponent, endpoint *protoCommon.Endpoint) {
-				manager.ServiceManager.ReconcileNamespace(ctx, "core")
-				manager.ServiceManager.ReconcileNamespace(ctx, "u01")
-			},
-		},
 	},
 	Components: make([]commonCommunication.RemoteComponent, 0),
 	factorySetters: map[string]ComponentFactory{
